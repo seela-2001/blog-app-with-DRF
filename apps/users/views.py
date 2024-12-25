@@ -1,4 +1,4 @@
-from .serializers import UserSerializer,AllUsersData
+from .serializers import UserSerializer
 from .models import NewUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,12 +6,13 @@ from rest_framework import status,viewsets
 from rest_framework.permissions import AllowAny,IsAdminUser,IsAuthenticated,BasePermission
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
-from rest_framework.decorators import api_view,permission_classes
+from rest_framework.decorators import api_view,permission_classes,action
 from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import check_password
+from drf_yasg.utils import extend_schema,swagger_auto_schema
+from drf_yasg import OpenApiResponse,openapi
 # Create your views here.
-
 
 
 class UserAuthentication(BasePermission):
@@ -21,102 +22,181 @@ class UserAuthentication(BasePermission):
         return obj == request.user
 
 
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = NewUser.objects.all()
+    serializer_class = UserSerializer
 
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        if self.action == 'list':
+            return [IsAdminUser()]
+        else:
+            return [UserAuthentication()]
+        
+    @swagger_auto_schema(
+        operation_description="Create a new user.",
+        responses={
+            status.HTTP_201_CREATED: openapi.Response(description="User created successfully"),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(description="Invalid data provided")
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        """Create a new user"""
+        return super().create(request, *args, **kwargs)
 
-class CustomUserCreate(APIView):
-    permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_description="Retrieve a list of users.",
+        responses={
+            status.HTTP_200_OK: openapi.Response(description="List of users", schema=UserSerializer(many=True)),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(description="Unauthorized")
+        }
+    )
+    def list(self, request, *args, **kwargs):
+        """Retrieve list of users"""
+        return super().list(request, *args, **kwargs)
 
-    def post(self,request):
-        reg_serializer = UserSerializer(data=request.data)
-        if reg_serializer.is_valid():
-            reg_serializer.save()
-            return Response(
-            {
-                "message": "User registered successfully.",
-                "user": reg_serializer.data,
+    @swagger_auto_schema(
+        operation_description="Retrieve a user by ID.",
+        responses={
+            status.HTTP_200_OK: openapi.Response(description="User data", schema=UserSerializer),
+            status.HTTP_404_NOT_FOUND: openapi.Response(description="User not found")
+        }
+    )
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a user by their ID"""
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Update a user's data.",
+        responses={
+            status.HTTP_200_OK: openapi.Response(description="User updated successfully"),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(description="Invalid data provided"),
+            status.HTTP_404_NOT_FOUND: openapi.Response(description="User not found")
+        }
+    )
+    def update(self, request, *args, **kwargs):
+        """Update user data"""
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Delete a user.",
+        responses={
+            status.HTTP_204_NO_CONTENT: openapi.Response(description="User deleted successfully"),
+            status.HTTP_404_NOT_FOUND: openapi.Response(description="User not found")
+        }
+    )
+    def destroy(self, request, *args, **kwargs):
+        """Delete a user"""
+        return super().destroy(request, *args, **kwargs)
+
+        
+    @swagger_auto_schema(
+        operation_description="Delete the user's profile photo.",
+        responses={
+            status.HTTP_204_NO_CONTENT: openapi.Response(description="Photo deleted successfully"),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(description="User has no photo or other error occurred")
+        }
+    )
+    @action(detail=True,methods=['delete'],url_path='delete-photo')
+    def delete_photo(self,request,pk):
+        user = self.get_object()
+        if user.photo:
+            user.photo.delete()
+            user.photo = None
+            user.save()
+        return Response({'message':'photo deleted successfully'},status=status.HTTP_204_NO_CONTENT)
+       
+
+    @swagger_auto_schema(
+        operation_description="Add a photo to the user's profile.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'photo': openapi.Schema(type=openapi.TYPE_FILE, description='The photo file to be added')
             },
-            status=status.HTTP_201_CREATED,
-            )
-        return Response(reg_serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(description="Photo added successfully"),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(description="No photo provided or invalid data")
+        }
+    )
+    @action(detail=True,methods=['post','put'],url_path='add-photo')
+    def add_photo(self,request,pk=None):
+        user = self.get_object()
+        photo = request.FILES.get('photo')
+        if not photo:
+            return Response({'message':'no photo added'},status=status.HTTP_400_BAD_REQUEST)
+        if user.photo:
+            user.photo.delete() 
+        user.photo = photo
+        user.save()
+        return Response({'message':'photo added successfully'},status=status.HTTP_200_OK)
         
 
 
 class BlackListTokenView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        operation_description="Blacklist a refresh token to invalidate it.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'refresh_token': openapi.Schema(type=openapi.TYPE_STRING, description='The refresh token to be blacklisted')
+            },
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(description="Token blacklisted successfully"),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(description="Invalid refresh token")
+        }
+    )
+
     def post(self,request):
         try:
             refresh_token = request.data['refresh_token']
             token = RefreshToken(refresh_token)
             token.blacklist()
-        except Exception as ex:
+        except :
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 
-
-class UsersList(APIView):
-    permission_classes = [IsAdminUser] 
-
-    def get(self,request):
-        try:
-            users = NewUser.objects.all()
-            serializer = AllUsersData(users,many=True)
-            return Response(serializer.data,status=status.HTTP_200_OK)
-        except Exception as ex:
-            return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-    
-
-
-class UpdateUser(APIView):
-    permission_classes = [UserAuthentication]
-
-    def put(self,request,pk):
-        try:
-            user = NewUser.objects.get(id=pk)
-            if request.user != user.id:
-                raise PermissionDenied('You do not have permission to perform this action.')
-            serializer = UserSerializer(data=request.data,instance=user,partial=True)
-            if serializer.is_valid():
-                serializer.save()
-            return Response({'message':'updated successfully'},status=status.HTTP_200_OK)
-        except NewUser.DoesNotExist:
-            return Response({'message':'no such user'},status=status.HTTP_404_NOT_FOUND)
-        except Exception as ex:
-            return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-        
-class DeleteUser(APIView):
-    permission_classes = [UserAuthentication]
-
-    def delete(self,request,pk):
-        try:
-            user = NewUser.objects.get(id=pk)
-            if request.user != user:
-                raise PermissionDenied("You do not have permission to access this user's data.")
-            user.delete()
-            return Response({'message':'user deleted successfully'},status=status.HTTP_204_NO_CONTENT)
-        except NewUser.DoesNotExist:
-            return Response({'message':'no such user'},status=status.HTTP_404_NOT_FOUND)
-        except Exception as ex:
-            return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-        
-
-
-class RetrieveUser(APIView):
-    permission_classes = [UserAuthentication]
-    def get(self,request,pk):
-        try:
-            user = NewUser.objects.get(id=pk)
-            if request.user != user:
-                raise PermissionDenied("You do not have permission to access this user's data.")
-            serializer = UserSerializer(user)
-            return Response(serializer.data,status=status.HTTP_200_OK)
-        except Exception as ex:
-            return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-        except NewUser.DoesNotExist:
-            return Response({'message':'no such user'},status=status.HTTP_404_NOT_FOUND)
-
-
+@swagger_auto_schema(
+    method='get',
+    operation_summary="Search for Authors",
+    operation_description=(
+        "This endpoint allows authenticated users to search for authors "
+        "based on their first name or username."
+    ),
+    manual_parameters=[
+        openapi.Parameter(
+            'search_query',
+            openapi.IN_QUERY,
+            description="The search term to filter authors by first name or username",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+    ],
+    responses={
+        200: openapi.Response(
+            description="List of authors matching the search query",
+            schema=openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_OBJECT)
+            ),
+        ),
+        404: openapi.Response(
+            description="No authors found matching the query",
+            examples={"application/json": {"message": "no similar authors"}},
+        ),
+        400: openapi.Response(
+            description="Bad request due to an error",
+            examples={"application/json": {"error": "An error message"}},
+        ),
+    },
+    tags=["Authors"]
+)
 @permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def search_for_authors(request,search_query):
@@ -132,42 +212,46 @@ def search_for_authors(request,search_query):
         return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
     
 
-@permission_classes([UserAuthentication])
-@api_view(['POST'])
-def upload_photo(request,pk):
-    user = get_object_or_404(NewUser,pk=pk)
-    if user != request.user:
-        raise PermissionDenied('You do not have permission to perform this action')
-    if 'photo' not in request.FILES:
-        return Response({'error':'no image found'})
-    try:
-        user.photo = request.FILES['photo']
-        user.save()
-        serializer = UserSerializer(user)
-        return Response(serializer.data,status=status.HTTP_200_OK)
-    except Exception as ex:
-        return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-    
-
-
-@permission_classes([UserAuthentication])
-@api_view(['DELETE'])
-def delete_photo(request,pk):
-    user = get_object_or_404(NewUser,pk=pk)
-    if user != request.user:
-        raise PermissionDenied('You do not have permission to perform this action')
-    try:
-        if user.photo:
-            user.photo.delete(save=False)
-            user.phot = None
-            user.save()
-            return Response({'message':'photo removed successfully'},status=status.HTTP_200_OK)
-        else:
-            return Response({'message':'no photo to remove'},status=status.HTTP_204_NO_CONTENT)
-    except Exception as ex:
-        return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-    
-
+@swagger_auto_schema(
+    method="post",
+    operation_summary="Change User Password",
+    operation_description=(
+        "Allows an authenticated user to change their password. The user must provide "
+        "their old password, a new password, and a confirmation of the new password. "
+        "The new password must be at least 8 characters long, and the confirmation password must match the new password."
+    ),
+    tags=["User"],
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            "old_password": openapi.Schema(type=openapi.TYPE_STRING, description="The user's current password."),
+            "new_password": openapi.Schema(type=openapi.TYPE_STRING, description="The new password to set."),
+            "confirm_password": openapi.Schema(type=openapi.TYPE_STRING, description="Confirmation of the new password."),
+        },
+        required=["old_password", "new_password", "confirm_password"]
+    ),
+    responses={
+        200: openapi.Response(
+            description="Password changed successfully.",
+            examples={"application/json": {"message": "Your password changed successfully"}}
+        ),
+        400: openapi.Response(
+            description="Bad request.",
+            examples={
+                "application/json": {
+                    "error": "all fields are required",
+                    "error": "Your old password is incorrect",
+                    "error": "password must be at least 8 characters",
+                    "error": "confirm password does not match new password"
+                }
+            }
+        ),
+        403: openapi.Response(
+            description="Permission denied.",
+            examples={"application/json": {"detail": "You are not authorized to perform this action."}}
+        )
+    }
+)
 @permission_classes([UserAuthentication])
 @api_view(['POST'])
 def change_password(request,pk):

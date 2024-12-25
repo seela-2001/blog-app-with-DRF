@@ -8,12 +8,6 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['id','post','user','comment','created_at','updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at','post','user']
 
-    def create(self,validated_data):
-        user = self.context['request'].user
-        post = validated_data.pop('post',None)
-        return Comment.objects.create(user=user,post=post,**validated_data)
-
-
 
 class PostSerializer(serializers.ModelSerializer):
     comment = serializers.SerializerMethodField(read_only=True)
@@ -28,7 +22,6 @@ class PostSerializer(serializers.ModelSerializer):
             validated_data['author'] = request.user
         return super().create(validated_data)
             
-     
     class Meta:
         model = Post
         fields =['id',

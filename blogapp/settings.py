@@ -43,11 +43,9 @@ INSTALLED_APPS = [
     'blog_api',
     'users',
     'rest_framework',
-    'rest_framework_simplejwt',
-    "corsheaders",
+    'rest_framework_simplejwt', 
+    'drf_yasg',
     'oauth2_provider',
-    'social_django',
-    'drf_social_oauth2',
 ]
 
 MIDDLEWARE = [
@@ -166,8 +164,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = "static/"
-STATIC_ROOT = 'static'
+STATIC_URL = "/static/"
+STATIC_ROOT =  'static'
 MEDIA_URL='/media/'
 MEDIA_ROOT = 'static/media/'
 
