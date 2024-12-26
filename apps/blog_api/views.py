@@ -201,6 +201,8 @@ class AuthorPostsView(APIView):
 
 
 
+@permission_classes([IsAuthenticated])
+@api_view(['GET'])
 @swagger_auto_schema(
     summary="Search for blogs by title or slug",
     description=(
@@ -223,8 +225,6 @@ class AuthorPostsView(APIView):
     },
     tags=["Blogs"],  # Optional grouping
 )
-@permission_classes([IsAuthenticated])
-@api_view(['GET'])
 def search_for_blog(request,search_query):
     try:
         posts = Post.objects.filter(

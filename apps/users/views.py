@@ -7,11 +7,11 @@ from rest_framework.permissions import AllowAny,IsAdminUser,IsAuthenticated,Base
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
 from rest_framework.decorators import api_view,permission_classes,action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied,ValidationError
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import check_password
-from drf_yasg.utils import extend_schema,swagger_auto_schema
-from drf_yasg import OpenApiResponse,openapi
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 # Create your views here.
 
 
@@ -91,6 +91,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
         
+    @action(detail=True,methods=['delete'],url_path='delete-photo')
     @swagger_auto_schema(
         operation_description="Delete the user's profile photo.",
         responses={
@@ -98,7 +99,6 @@ class UserViewSet(viewsets.ModelViewSet):
             status.HTTP_400_BAD_REQUEST: openapi.Response(description="User has no photo or other error occurred")
         }
     )
-    @action(detail=True,methods=['delete'],url_path='delete-photo')
     def delete_photo(self,request,pk):
         user = self.get_object()
         if user.photo:
@@ -108,6 +108,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'message':'photo deleted successfully'},status=status.HTTP_204_NO_CONTENT)
        
 
+    @action(detail=True,methods=['post','put'],url_path='add-photo')
     @swagger_auto_schema(
         operation_description="Add a photo to the user's profile.",
         request_body=openapi.Schema(
@@ -121,7 +122,6 @@ class UserViewSet(viewsets.ModelViewSet):
             status.HTTP_400_BAD_REQUEST: openapi.Response(description="No photo provided or invalid data")
         }
     )
-    @action(detail=True,methods=['post','put'],url_path='add-photo')
     def add_photo(self,request,pk=None):
         user = self.get_object()
         photo = request.FILES.get('photo')
@@ -161,9 +161,10 @@ class BlackListTokenView(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 @swagger_auto_schema(
-    method='get',
+    tags=["Authors"],
     operation_summary="Search for Authors",
     operation_description=(
         "This endpoint allows authenticated users to search for authors "
@@ -188,32 +189,32 @@ class BlackListTokenView(APIView):
         ),
         404: openapi.Response(
             description="No authors found matching the query",
-            examples={"application/json": {"message": "no similar authors"}},
+            examples={"application/json": {"message": "No similar authors found"}},
         ),
         400: openapi.Response(
             description="Bad request due to an error",
-            examples={"application/json": {"error": "An error message"}},
+            examples={"application/json": {"error": "An error occurred"}},
         ),
     },
-    tags=["Authors"]
 )
-@permission_classes([IsAuthenticated])
-@api_view(['GET'])
-def search_for_authors(request,search_query):
-    try:
-        authors = NewUser.objects.filter(
-            Q(first_name__icontains=search_query) | Q(username__icontains=search_query)
-        )
-        serializer = UserSerializer(authors,many=True)
-        return Response(serializer.data,status=status.HTTP_200_OK)
-    except NewUser.DoesNotExist:
-        return Response({'message':'no similar authors'},status=status.HTTP_404_NOT_FOUND)
-    except Exception as ex:
-        return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-    
+def search_for_authors(request):
+    search_query = request.query_params.get('search_query', '').strip()
+    if not search_query:
+        return Response({'error': 'search_query parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+    authors = NewUser.objects.filter(
+        Q(first_name__icontains=search_query) | Q(username__icontains=search_query)
+    )
+    if not authors.exists():
+        return Response({'message': 'No similar authors found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = UserSerializer(authors, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([UserAuthentication])
 @swagger_auto_schema(
-    method="post",
     operation_summary="Change User Password",
     operation_description=(
         "Allows an authenticated user to change their password. The user must provide "
@@ -239,10 +240,10 @@ def search_for_authors(request,search_query):
             description="Bad request.",
             examples={
                 "application/json": {
-                    "error": "all fields are required",
+                    "error": "All fields are required",
                     "error": "Your old password is incorrect",
-                    "error": "password must be at least 8 characters",
-                    "error": "confirm password does not match new password"
+                    "error": "Password must be at least 8 characters",
+                    "error": "Confirm password does not match new password"
                 }
             }
         ),
@@ -252,32 +253,32 @@ def search_for_authors(request,search_query):
         )
     }
 )
-@permission_classes([UserAuthentication])
-@api_view(['POST'])
-def change_password(request,pk):
-    user = get_object_or_404(NewUser,pk=pk)
+def change_password(request, pk):
+    user = get_object_or_404(NewUser, pk=pk)
+
+    # Check if the user has the right permission
     if user != request.user:
         raise PermissionDenied('You are not authorized to perform this action.')
-    
-    data = request.data
 
+    data = request.data
     old_password = data.get('old_password')
     new_password = data.get('new_password')
     confirm_password = data.get('confirm_password')
 
+    # Validate input
     if not old_password or not new_password or not confirm_password:
-        return Response({'error':'all fields are required'},status=status.HTTP_400_BAD_REQUEST)
-    
-    if not check_password(old_password,user.password):
-        return Response({'error':'Your old password is incorrect'},status=status.HTTP_400_BAD_REQUEST)
-    
-    
+        raise ValidationError({'error': 'All fields are required'})
+
+    if not check_password(old_password, user.password):
+        return Response({'error': 'Your old password is incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+
     if len(new_password) < 8:
-        return Response({'error':'password must be at least 8 characters'},status=status.HTTP_400_BAD_REQUEST)
-    
-    if confirm_password != new_password:
-        return Response({'error':'confirm password does not match new password'},status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response({'error': 'Password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_password != confirm_password:
+        return Response({'error': 'Confirm password does not match new password'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Set the new password
     user.set_password(new_password)
     user.save()
-    return Response({'message':'Your password changed successfully'},status=status.HTTP_200_OK)
+    return Response({'message': 'Your password changed successfully'}, status=status.HTTP_200_OK)
