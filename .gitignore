@@ -1,1 +1,9 @@
 .env
+ssh.txt
+ssh.txt.pub
+.pre-commit-config.yaml
+# Ignore pre-commit caches
+.cache/pre-commit/
+
+# Ignore flake8 log files or temp files (if any)
+*.log

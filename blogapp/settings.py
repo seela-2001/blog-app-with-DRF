@@ -10,15 +10,16 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from datetime import timedelta
+from dotenv import load_dotenv
 import os
 import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0,os.path.join(BASE_DIR,'apps'))
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
-from dotenv import load_dotenv
 load_dotenv()
 
 # Quick-start development settings - unsuitable for production
@@ -46,7 +47,7 @@ INSTALLED_APPS = [
     'blog_api',
     'users',
     'rest_framework',
-    'rest_framework_simplejwt', 
+    'rest_framework_simplejwt',
     'drf_yasg',
     'oauth2_provider',
 ]
@@ -83,9 +84,6 @@ TEMPLATES = [
 ]
 
 
-
-
-
 REST_FRAMEWORK = {
     # 'DEFAULT_PERMISSION_CLASSES': [
     #     'rest_framework.permissions.AllowAny',
@@ -99,8 +97,8 @@ REST_FRAMEWORK = {
 
 
 AUTHENTICATION_BACKENDS = (
-   'drf_social_oauth2.backends.DjangoOAuth2',
-   'django.contrib.auth.backends.ModelBackend',
+    'drf_social_oauth2.backends.DjangoOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
 )
 
 WSGI_APPLICATION = "blogapp.wsgi.application"
@@ -112,10 +110,10 @@ WSGI_APPLICATION = "blogapp.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME":os.getenv('DB_NAME'),
-        'USER' :os.getenv('DB_USER'),
-        'PASSWORD':os.getenv('DB_PASSWORD'),
-        'HOST':os.getenv('DB_HOST'),
+        "NAME": os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT')
     }
 }
@@ -138,7 +136,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
 
 
 LOGGING = {
@@ -172,8 +169,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "/static/"
-STATIC_ROOT =  'static'
-MEDIA_URL='/media/'
+STATIC_ROOT = 'static'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = 'static/media/'
 
 # Default primary key field type
@@ -191,8 +188,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:9000",
 ]
 
-
-from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
@@ -234,5 +229,5 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
-#custom user model
-AUTH_USER_MODEL = 'users.NewUser'
+# custom user model
+AUTH_USER_MODEL = os.getenv('AUTH_USER_MODEL')

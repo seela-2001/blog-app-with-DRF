@@ -1,9 +1,9 @@
-from blog.models import Post,Category,Comment
-from .serializers import PostSerializer,CategorySerializer,CommentSerializer
+from blog.models import Post, Category, Comment
+from .serializers import PostSerializer, CategorySerializer, CommentSerializer
 from rest_framework.response import Response
-from rest_framework.permissions import SAFE_METHODS,BasePermission, IsAuthenticated,IsAdminUser
-from rest_framework import viewsets,status
-from rest_framework.decorators import api_view,permission_classes
+from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated, IsAdminUser
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view, permission_classes
 from django.db.models import Q
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
@@ -12,23 +12,20 @@ from drf_yasg import openapi
 
 class PostUserWritePermission(BasePermission):
     message = 'Editing is restricted to the author only.'
-      
+
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True 
+            return True
         return obj.author == request.user
-    
-
 
 
 class CommentUpdateOrDeletePermission(BasePermission):
     message = 'Editing is restricted to the author only.'
-      
+
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
-            return True 
+            return True
         return obj.user == request.user
-
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -47,13 +44,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
-    @swagger_auto_schema(
-        operation_summary="List all categories",
-        operation_description="Retrieve a list of all categories available in the system.",
-        responses={
-            200: CategorySerializer(many=True)
-        }
-    )
+    @swagger_auto_schema(operation_summary="List all categories",
+                         operation_description="Retrieve a list of all categories available in the system.",
+                         responses={200: CategorySerializer(many=True)})
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
@@ -63,9 +56,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
         request_body=CategorySerializer,
         responses={
             201: CategorySerializer,
-            400: openapi.Response("Invalid data provided.")
-        }
-    )
+            400: openapi.Response("Invalid data provided.")})
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
@@ -76,22 +67,20 @@ class CategoryViewSet(viewsets.ModelViewSet):
         responses={
             200: CategorySerializer,
             400: openapi.Response("Invalid data provided."),
-            404: openapi.Response("Category not found.")
-        }
-    )
+            404: openapi.Response("Category not found.")})
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
     @swagger_auto_schema(
         operation_summary="Partially update a category",
-        operation_description="Partially update fields of an existing category by its unique ID. Admin permissions required.",
+        operation_description="Partially update fields of\
+                                an existing category by its unique ID.\
+                                Admin permissions required.",
         request_body=CategorySerializer,
         responses={
             200: CategorySerializer,
             400: openapi.Response("Invalid data provided."),
-            404: openapi.Response("Category not found.")
-        }
-    )
+            404: openapi.Response("Category not found.")})
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
@@ -100,19 +89,16 @@ class CategoryViewSet(viewsets.ModelViewSet):
         operation_description="Remove a category from the system by its unique ID. Admin permissions required.",
         responses={
             204: openapi.Response("Category deleted."),
-            404: openapi.Response("Category not found.")
-        }
-    )
+            404: openapi.Response("Category not found.")})
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
-
-        
 
 
 class PostViewSet(viewsets.ModelViewSet):
 
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+
     def get_permissions(self):
         if self.action == 'list':
             return [IsAdminUser()]
@@ -121,7 +107,6 @@ class PostViewSet(viewsets.ModelViewSet):
         else:
             return [PostUserWritePermission()]
 
-    
     @swagger_auto_schema(
         operation_description="Retrieve a list of all posts. Admin access is required.",
         responses={200: PostSerializer(many=True)},
@@ -154,7 +139,9 @@ class PostViewSet(viewsets.ModelViewSet):
         operation_description="Update a specific post by its ID. Requires appropriate permissions.",
         request_body=PostSerializer,
         responses={
-            200: openapi.Response("Post updated successfully", PostSerializer),
+            200: openapi.Response(
+                "Post updated successfully",
+                PostSerializer),
             400: "Invalid input",
             404: "Post not found",
         },
@@ -171,34 +158,34 @@ class PostViewSet(viewsets.ModelViewSet):
     )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
-        
-        
 
-    
+
 class AuthorPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         summary="Retrieve all posts by the logged-in author",
-        description="Returns a list of posts authored by the authenticated user. If no posts are found, it returns a 404 message.",
+        description="Returns a list of posts authored by\
+                    the authenticated user. If no posts are found,\
+                    it returns a 404 message.",
         responses={
             200: PostSerializer(many=True),  # Response for successful retrieval
             404: dict,  # Message when no posts exist
             400: dict,  # Error response
         },
-        tags=["Posts"], 
+        tags=["Posts"],
     )
-    def get(self,request):
+    def get(self, request):
         post = Post.objects.filter(author=request.user)
         try:
             if post:
-                serializer = PostSerializer(post,many=True)
-                return Response(serializer.data,status=status.HTTP_200_OK)
+                serializer = PostSerializer(post, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             else:
-                return Response({'message':'You do not have posts yet.'},status=status.HTTP_404_NOT_FOUND)
+                return Response({'message': 'You do not have posts yet.'},
+                                status=status.HTTP_404_NOT_FOUND)
         except Exception as ex:
-            return Response({'error':f'{str(ex)}'},status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({'error': f'{str(ex)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @permission_classes([IsAuthenticated])
@@ -225,18 +212,18 @@ class AuthorPostsView(APIView):
     },
     tags=["Blogs"],  # Optional grouping
 )
-def search_for_blog(request,search_query):
+def search_for_blog(request, search_query):
     try:
         posts = Post.objects.filter(
             Q(title__icontains=search_query) | Q(slug__icontains=search_query)
         )
-        serializer = PostSerializer(posts,many=True)
-        return Response(serializer.data,status=status.HTTP_200_OK)
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except Post.DoesNotExist:
-        return Response({'message':'no similar blogs'},status=status.HTTP_404_NOT_FOUND)
+        return Response({'message': 'no similar blogs'},
+                        status=status.HTTP_404_NOT_FOUND)
     except Exception as ex:
-        return Response({'error':f'{str(ex)}'})
-
+        return Response({'error': f'{str(ex)}'})
 
 
 # ----------------------------------------------------------------------------
@@ -254,7 +241,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         post_id = self.kwargs.get('post_id')
         return Comment.objects.filter(post_id=post_id)
-    
+
     @swagger_auto_schema(
         operation_description="Create a new comment for a specific post.",
         request_body=CommentSerializer,
@@ -279,7 +266,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-    
+
     @swagger_auto_schema(
         operation_description="Retrieve a specific comment for a post.",
         responses={
@@ -294,7 +281,9 @@ class CommentViewSet(viewsets.ModelViewSet):
         operation_description="Update a specific comment for a post. Requires appropriate permissions.",
         request_body=CommentSerializer,
         responses={
-            200: openapi.Response("Comment updated successfully", CommentSerializer),
+            200: openapi.Response(
+                "Comment updated successfully",
+                CommentSerializer),
             400: "Invalid input data",
             404: "Comment not found",
         },
