@@ -4,8 +4,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAdminUser, \
-    IsAuthenticated, BasePermission
+    IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from .pagination import AuthorsPagination
 from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -13,14 +14,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import check_password
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from permissions.custom_permissions import UserAuthentication
 # Create your views here.
-
-
-class UserAuthentication(BasePermission):
-    def has_object_permission(self, request, view, obj):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return obj == request.user
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -238,12 +233,14 @@ def search_for_authors(request):
         Q(first_name__icontains=search_query) |
         Q(username__icontains=search_query)
     )
+    paginator = AuthorsPagination()
+    paginated_authors = paginator.paginate_queryset(authors, request)
     if not authors.exists():
         return Response({'message': 'No similar authors found'},
                         status=status.HTTP_404_NOT_FOUND)
 
-    serializer = UserSerializer(authors, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    serializer = UserSerializer(paginated_authors, many=True)
+    return paginator.get_paginated_response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
