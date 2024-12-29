@@ -1,31 +1,15 @@
 from blog.models import Post, Category, Comment
 from .serializers import PostSerializer, CategorySerializer, CommentSerializer
 from rest_framework.response import Response
-from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
+from permissions.custom_permissions import PostUserWritePermission, CommentUpdateOrDeletePermission
+from .pagination import PostPagination
 from django.db.models import Q
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
-
-class PostUserWritePermission(BasePermission):
-    message = 'Editing is restricted to the author only.'
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-        return obj.author == request.user
-
-
-class CommentUpdateOrDeletePermission(BasePermission):
-    message = 'Editing is restricted to the author only.'
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-        return obj.user == request.user
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -216,19 +200,16 @@ def search_for_blog(request, search_query):
     try:
         posts = Post.objects.filter(
             Q(title__icontains=search_query) | Q(slug__icontains=search_query)
-        )
-        serializer = PostSerializer(posts, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        ).select_related('author')
+        paginator = PostPagination()
+        paginated_posts = paginator.paginate_queryset(posts, request)
+        serializer = PostSerializer(paginated_posts, many=True)
+        return paginator.get_paginated_response(serializer.data, status=status.HTTP_200_OK)
     except Post.DoesNotExist:
         return Response({'message': 'no similar blogs'},
                         status=status.HTTP_404_NOT_FOUND)
     except Exception as ex:
         return Response({'error': f'{str(ex)}'})
-
-
-# ----------------------------------------------------------------------------
-
-# comments endpoints
 
 
 class CommentViewSet(viewsets.ModelViewSet):
