@@ -7,3 +7,5 @@ ssh.txt.pub
 
 # Ignore flake8 log files or temp files (if any)
 *.log
+data.json
+backup.json
