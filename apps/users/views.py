@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import check_password
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from permissions.custom_permissions import UserAuthentication
+from .custom_permissions import UserAuthentication
 # Create your views here.
 
 

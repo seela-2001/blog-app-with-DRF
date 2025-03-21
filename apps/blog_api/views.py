@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
-from permissions.custom_permissions import PostUserWritePermission, CommentUpdateOrDeletePermission
+from .custom_permissions import PostUserWritePermission, CommentUpdateOrDeletePermission
 from .pagination import PostPagination
 from django.db.models import Q
 from rest_framework.views import APIView
@@ -79,7 +79,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class PostViewSet(viewsets.ModelViewSet):
-
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
