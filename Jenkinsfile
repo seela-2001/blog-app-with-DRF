@@ -13,7 +13,7 @@ pipeline {
             steps {
                 script {
                     // Expect a Jenkins Secret File credential with ID: blog-app-env
-                    withCredentials([file(credentialsId: 'blog-app-env', variable: 'ENV_FILE')]) {
+                    withCredentials([file(credentialsId: 'blog app .env', variable: 'ENV_FILE')]) {
                         sh '''
                         set -e
                         echo "Loading .env file ..."
