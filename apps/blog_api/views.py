@@ -101,8 +101,8 @@ class PostViewSet(viewsets.ModelViewSet):
         operation_description="Create a new post. Requires user authentication.",
         request_body=PostSerializer,
         responses={
-            201: openapi.Response("Post created successfully", PostSerializer),
-            400: "Invalid input",
+            201: openapi.Response(description="Post created successfully", schema=PostSerializer),
+            400: openapi.Response(description="Invalid input"),
         },
     )
     def create(self, request, *args, **kwargs):
@@ -111,8 +111,8 @@ class PostViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Retrieve a specific post by its ID.",
         responses={
-            200: openapi.Response("Post retrieved successfully", PostSerializer),
-            404: "Post not found",
+            200: openapi.Response(description="Post retrieved successfully", schema=PostSerializer),
+            404: openapi.Response(description="Post not found"),
         },
     )
     def retrieve(self, request, *args, **kwargs):
@@ -123,10 +123,10 @@ class PostViewSet(viewsets.ModelViewSet):
         request_body=PostSerializer,
         responses={
             200: openapi.Response(
-                "Post updated successfully",
-                PostSerializer),
-            400: "Invalid input",
-            404: "Post not found",
+                description="Post updated successfully",
+                schema=PostSerializer),
+            400: openapi.Response(description="Invalid input"),
+            404: openapi.Response(description="Post not found"),
         },
     )
     def update(self, request, *args, **kwargs):
@@ -135,8 +135,8 @@ class PostViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Delete a specific post by its ID. Requires appropriate permissions.",
         responses={
-            204: "Post deleted successfully",
-            404: "Post not found",
+            204: openapi.Response(description="Post deleted successfully"),
+            404: openapi.Response(description="Post not found"),
         },
     )
     def destroy(self, request, *args, **kwargs):
@@ -153,8 +153,14 @@ class AuthorPostsView(APIView):
                     it returns a 404 message.",
         responses={
             200: PostSerializer(many=True),  # Response for successful retrieval
-            404: dict,  # Message when no posts exist
-            400: dict,  # Error response
+            404: openapi.Response(
+                description="No posts found",
+                examples={"application/json": {"message": "You do not have posts yet."}},
+            ),
+            400: openapi.Response(
+                description="Bad request",
+                examples={"application/json": {"error": "<details>"}},
+            ),
         },
         tags=["Posts"],
     )
@@ -190,8 +196,14 @@ class AuthorPostsView(APIView):
     ],
     responses={
         200: PostSerializer(many=True),  # Successful response with matching posts
-        404: dict,  # No similar blogs message
-        400: dict,  # Error details in case of unexpected issues
+        404: openapi.Response(
+            description="No similar blogs",
+            examples={"application/json": {"message": "no similar blogs"}},
+        ),
+        400: openapi.Response(
+            description="Bad request",
+            examples={"application/json": {"error": "<details>"}},
+        ),
     },
     tags=["Blogs"],  # Optional grouping
 )
@@ -226,8 +238,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         operation_description="Create a new comment for a specific post.",
         request_body=CommentSerializer,
         responses={
-            201: openapi.Response("Comment created successfully", CommentSerializer),
-            400: "Invalid input data",
+            201: openapi.Response(description="Comment created successfully", schema=CommentSerializer),
+            400: openapi.Response(description="Invalid input data"),
         },
     )
     def perform_create(self, serializer):
@@ -250,8 +262,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Retrieve a specific comment for a post.",
         responses={
-            200: openapi.Response("Comment retrieved successfully", CommentSerializer),
-            404: "Comment not found",
+            200: openapi.Response(description="Comment retrieved successfully", schema=CommentSerializer),
+            404: openapi.Response(description="Comment not found"),
         },
     )
     def retrieve(self, request, *args, **kwargs):
@@ -262,10 +274,10 @@ class CommentViewSet(viewsets.ModelViewSet):
         request_body=CommentSerializer,
         responses={
             200: openapi.Response(
-                "Comment updated successfully",
-                CommentSerializer),
-            400: "Invalid input data",
-            404: "Comment not found",
+                description="Comment updated successfully",
+                schema=CommentSerializer),
+            400: openapi.Response(description="Invalid input data"),
+            404: openapi.Response(description="Comment not found"),
         },
     )
     def update(self, request, *args, **kwargs):
@@ -274,8 +286,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Delete a specific comment for a post. Requires appropriate permissions.",
         responses={
-            204: "Comment deleted successfully",
-            404: "Comment not found",
+            204: openapi.Response(description="Comment deleted successfully"),
+            404: openapi.Response(description="Comment not found"),
         },
     )
     def destroy(self, request, *args, **kwargs):
